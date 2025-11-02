@@ -1,4 +1,4 @@
-﻿; =========================================================
+; =========================================================
 ; SCRIPT AHK UNIFICADO (F5, F6, Z)
 ; =========================================================
 
@@ -108,22 +108,19 @@ Return
 #If (!Autoclick_Ativo AND TrocaRapida_Ativo)
 $*LButton::
 {
-send {1 down}
-sleep 20
-send {1 up}
+        Send {LButton Down}
+        Sleep 5
+        Send {LButton Up}
 
-send {1 down}
-sleep 10
-send {1 up}
+        ; Simulação da tecla q (Down + Up)
+        Send {q Down}
+        Sleep 5
+        Send {q Up}
 
-send {3 down}
-sleep 10
-send {3 up}
-
-send {1 down}
-sleep 10
-send {1 up}
-
+        ; Simulação da tecla q (Down + Up)
+        Send {q Down}
+        Sleep 5
+        Send {q Up}
 }
 Return
 #If
