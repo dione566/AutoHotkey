@@ -29,7 +29,7 @@ WheelUp:: ; LIGA O MACRO
     if (!MacroActive) {
         MacroActive := True
         SetTimer, ColorAimbotLoop, 1
-        ToolTip, 🔥 MACRO: ATIVADO, A_ScreenWidth/2, A_ScreenHeight/2 -50
+        ToolTip, MACRO: ATIVADO, A_ScreenWidth/2, A_ScreenHeight/2 -50
         SetTimer, RemoveToolTip, -500
     }
 return
@@ -38,7 +38,7 @@ WheelDown:: ; DESLIGA O MACRO
     if (MacroActive) {
         MacroActive := False
         SetTimer, ColorAimbotLoop, Off
-        ToolTip, 🚫 MACRO: DESATIVADO, A_ScreenWidth/2, A_ScreenHeight/2 -50
+        ToolTip, MACRO: DESATIVADO, A_ScreenWidth/2, A_ScreenHeight/2 -50
         SetTimer, RemoveToolTip, -500
     }
 return
@@ -66,7 +66,7 @@ z:: ; Pausar Script Totalmente
     Suspend
     MacroActive := False
     SetTimer, ColorAimbotLoop, Off
-    ToolTip, % (A_IsSuspended ? "🛑 SCRIPT PAUSADO" : "▶️ SCRIPT ATIVO")
+    ToolTip, % (A_IsSuspended ? "SCRIPT PAUSADO" : "SCRIPT ATIVO")
     SetTimer, RemoveToolTip, -1000
 return
 
@@ -111,3 +111,4 @@ return
     ToolTip ; Limpa o tooltip antes de fechar
     ExitApp
 return
+
