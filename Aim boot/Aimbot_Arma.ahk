@@ -103,12 +103,13 @@ RemoveToolTip:
 return
 
 ~F7::
-    Loop, 2 {
-        Contagem := 3 - A_Index
-        ToolTip, ⚠️ Encerrando em %Contagem% segundos...
+    Loop, 4 {
+        Contagem := 5 - A_Index
+        ToolTip, Encerrando em %Contagem% segundos...
         Sleep, 1000
     }
     ToolTip ; Limpa o tooltip antes de fechar
     ExitApp
 return
+
 
