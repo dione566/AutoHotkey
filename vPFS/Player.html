@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor e Conversor de Vídeo Multi-Arquivo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            margin-bottom: 5px;
+            font-weight: 400;
+        }
+        
+        #status-msg {
+            color: #4285f4;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* Área de Drop */
+        #drop-zone {
+            width: 100%;
+            max-width: 640px;
+            height: 180px;
+            border: 3px dashed #4285f4;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #1e1e1e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        #drop-zone.hover {
+            background-color: #292929;
+            border-color: #34a853;
+            transform: scale(1.01);
+        }
+
+        #drop-zone p {
+            margin: 5px 0;
+            font-size: 18px;
+            color: #aaaaaa;
+            pointer-events: none;
+        }
+
+        /* Grid de Vídeos Processados */
+        #playlist-container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 10px;
+        }
+
+        /* Card Individual de cada Vídeo */
+        .video-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid #2d2d2d;
+        }
+
+        .video-title {
+            font-size: 14px;
+            color: #e0e0e0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        /* Container do Vídeo */
+        .video-wrapper {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Estilo quando o wrapper entra em Tela Cheia */
+        .video-wrapper:fullscreen {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
+        }
+
+        /* Força o navegador a esconder o botão de tela cheia nativo que quebra o script */
+        video::-webkit-media-controls-fullscreen-button {
+            display: none !important;
+        }
+        video::-internal-media-controls-fullscreen-button {
+            display: none !important;
+        }
+
+        /* Ajuste de tamanho para quando girar em 90° ou 270° em tela cheia */
+        .video-wrapper:fullscreen video.rotated-sideways {
+            width: 100vh;
+            height: 100vw;
+        }
+
+        /* Botões flutuantes dentro da tela cheia (Girar e Voltar) */
+        .fullscreen-btn {
+            display: none;
+            position: absolute;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid #444;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2147483647; /* Garante ficar por cima de tudo no modo fullscreen */
+            transition: background 0.2s;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(40, 40, 40, 0.9);
+        }
+
+        /* Botão Girar no canto superior direito */
+        .fullscreen-rotate-btn {
+            top: 20px;
+            right: 20px;
+            border-radius: 50%;
+            padding: 12px;
+            font-size: 20px;
+        }
+
+        /* Botão Voltar no canto superior esquerdo */
+        .fullscreen-back-btn {
+            top: 20px;
+            left: 20px;
+            display: none;
+        }
+
+        /* Só mostra os botões flutuantes quando estiver de fato em tela cheia */
+        .video-wrapper:fullscreen .fullscreen-btn {
+            display: block;
+        }
+        .video-wrapper:fullscreen .fullscreen-back-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Container de botões abaixo do card */
+        .actions-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Botões inferiores */
+        .btn-download, .btn-rotate, .btn-fullscreen {
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-download {
+            background-color: #34a853;
+            box-shadow: 0 4px 8px rgba(52, 168, 83, 0.2);
+            flex: 1;
+        }
+
+        .btn-download:hover {
+            background-color: #2c8c46;
+        }
+
+        .btn-rotate {
+            background-color: #4285f4;
+            box-shadow: 0 4px 8px rgba(66, 133, 244, 0.2);
+        }
+
+        .btn-rotate:hover {
+            background-color: #2a6ed4;
+        }
+
+        .btn-fullscreen {
+            background-color: #8a3ab9;
+            box-shadow: 0 4px 8px rgba(138, 58, 185, 0.2);
+        }
+
+        .btn-fullscreen:hover {
+            background-color: #6d2d93;
+        }
+
+        .btn-download:active, .btn-rotate:active, .btn-fullscreen:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Conversor e Reprodutor .bxa0 Multi-Arquivo</h2>
+    <div id="status-msg">Arraste um ou mais arquivos para remover a trava e gerar os players</div>
+
+    <div id="drop-zone">
+        <p>Arraste e solte seus arquivos .bxa0 aqui</p>
+        <span style="font-size: 12px; color: #666;">Extração em lote e restauração de miniatura nativa</span>
+    </div>
+
+    <div id="playlist-container"></div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const playlistContainer = document.getElementById('playlist-container');
+        const statusMsg = document.getElementById('status-msg');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('hover'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('hover'), false);
+        });
+
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        dropZone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = '.bxa0';
+            input.onchange = (e) => processarArquivos(e.target.files);
+            input.click();
+        });
+
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            processarArquivos(dt.files);
+        }
+
+        function processarArquivos(files) {
+            if (files.length === 0) return;
+
+            statusMsg.style.color = "#4285f4";
+            statusMsg.innerText = `Processando ${files.length} arquivo(s)...`;
+
+            Array.from(files).forEach(file => {
+                const nomeNovoArquivo = file.name.replace(".bxa0", "") + ".mp4";
+
+                const reader = new FileReader();
+                reader.readAsArrayBuffer(file);
+
+                reader.onload = function(event) {
+                    const buffer = event.target.result;
+                    const srcBytes = new Uint8Array(buffer);
+                    const BYTES_A_REMOVER = 32;
+                    let blobParaDownload;
+
+                    if (srcBytes.length > BYTES_A_REMOVER) {
+                        const bytesLimpos = srcBytes.subarray(BYTES_A_REMOVER);
+                        blobParaDownload = new Blob([bytesLimpos], { type: 'video/mp4' });
+                    } else {
+                        blobParaDownload = new Blob([srcBytes], { type: 'video/mp4' });
+                    }
+
+                    const videoURL = URL.createObjectURL(blobParaDownload);
+                    criarCardVideo(videoURL, nomeNovoArquivo, blobParaDownload);
+                };
+            });
+
+            statusMsg.style.color = "#34a853";
+            statusMsg.innerText = "Arquivos processados! Prontos para reprodução e download.";
+        }
+
+        function criarCardVideo(url, nomeArquivo, blob) {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+
+            const titulo = document.createElement('div');
+            titulo.className = 'video-title';
+            titulo.innerText = nomeArquivo;
+
+            const videoWrapper = document.createElement('div');
+            videoWrapper.className = 'video-wrapper';
+
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.preload = "metadata";
+            videoWrapper.appendChild(video);
+
+            // 1. Botão flutuante de rotação (canto superior direito)
+            const btnFloatRotate = document.createElement('button');
+            btnFloatRotate.className = 'fullscreen-btn fullscreen-rotate-btn';
+            btnFloatRotate.innerHTML = '🔄';
+            btnFloatRotate.title = "Rotacionar (Ou aperte 'R')";
+            videoWrapper.appendChild(btnFloatRotate);
+
+            // 2. NOVO: Botão flutuante para Voltar / Sair do Fullscreen (canto superior esquerdo)
+            const btnFloatBack = document.createElement('button');
+            btnFloatBack.className = 'fullscreen-btn fullscreen-back-btn';
+            btnFloatBack.innerHTML = '⬅ Voltar';
+            btnFloatBack.title = "Sair da Tela Cheia (Ou aperte 'ESC')";
+            videoWrapper.appendChild(btnFloatBack);
+
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'actions-container';
+
+            const btnDownload = document.createElement('button');
+            btnDownload.className = 'btn-download';
+            btnDownload.innerHTML = '💾 Baixar';
+            btnDownload.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = nomeArquivo;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // Lógica Central de Rotação
+            let currentRotation = 0;
+            function dispararRotacao() {
+                currentRotation = (currentRotation + 90) % 360;
+                video.style.transform = `rotate(${currentRotation}deg)`;
+
+                if (currentRotation === 90 || currentRotation === 270) {
+                    video.classList.add('rotated-sideways');
+                } else {
+                    video.classList.remove('rotated-sideways');
+                }
+            }
+
+            // Ouvintes de Teclado (R para girar)
+            document.addEventListener('keydown', (e) => {
+                if (document.fullscreenElement === videoWrapper && (e.key === 'r' || e.key === 'R')) {
+                    dispararRotacao();
+                }
+            });
+
+            const btnRotate = document.createElement('button');
+            btnRotate.className = 'btn-rotate';
+            btnRotate.innerHTML = '🔄 Girar';
+            btnRotate.addEventListener('click', dispararRotacao);
+            btnFloatRotate.addEventListener('click', dispararRotacao);
+
+            // Controle de Tela Cheia Geral
+            const btnFullscreen = document.createElement('button');
+            btnFullscreen.className = 'btn-fullscreen';
+            btnFullscreen.innerHTML = '📺 Tela Cheia';
+            
+            function alternarFullscreen() {
+                if (!document.fullscreenElement) {
+                    videoWrapper.requestFullscreen().catch(err => {
+                        console.log(`Erro ao ativar tela cheia: ${err.message}`);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+
+            function fecharFullscreen() {
+                if (document.fullscreenElement === videoWrapper) {
+                    document.exitFullscreen();
+                }
+            }
+
+            btnFullscreen.addEventListener('click', alternarFullscreen);
+            btnFloatBack.addEventListener('click', fecharFullscreen); // Clique no botão "Voltar" fecha a tela cheia
+
+            // Dois cliques no vídeo abre/fecha a tela cheia
+            video.addEventListener('dblclick', (e) => {
+                e.preventDefault();
+                alternarFullscreen();
+            });
+
+            actionsContainer.appendChild(btnDownload);
+            actionsContainer.appendChild(btnRotate);
+            actionsContainer.appendChild(btnFullscreen);
+
+            card.appendChild(titulo);
+            card.appendChild(videoWrapper);
+            card.appendChild(actionsContainer);
+            playlistContainer.appendChild(card);
+        }
+    </script>
+
+</body>
+</html>
