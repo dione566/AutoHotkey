@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor Multimídia Ultra-Rápido (Miniaturas Reais)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h2 { margin-bottom: 5px; font-weight: 400; }
+        
+        #status-msg {
+            color: #4285f4;
+            margin-bottom: 15px;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        #drop-zone {
+            width: 100%;
+            max-width: 640px;
+            height: 120px;
+            border: 3px dashed #4285f4;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #1e1e1e;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        #drop-zone.hover { background-color: #292929; border-color: #34a853; }
+        #drop-zone p { margin: 5px 0; font-size: 18px; color: #aaaaaa; pointer-events: none; }
+
+        #playlist-container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 10px;
+        }
+
+        .media-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border: 1px solid #2d2d2d;
+            transition: transform 0.2s;
+        }
+        .media-card:hover {
+            transform: translateY(-2px);
+            border-color: #4285f4;
+        }
+
+        .thumbnail-wrapper {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: #0d0d0d;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .thumbnail-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .loading-dots {
+            font-size: 11px;
+            color: #666;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        .media-title {
+            font-size: 12px;
+            color: #e0e0e0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 500;
+        }
+
+        .btn-open {
+            width: 100%;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 7px 0;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-open:hover { background-color: #2a6ed4; }
+
+        /* MODAL DO PLAYER */
+        #player-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0,0,0,0.96);
+            z-index: 99999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* CONTEINER DA MÍDIA (ESTE ENTRA EM FULLSCREEN AGORA) */
+        #modal-media-wrapper {
+            width: 100%;
+            max-width: 850px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Comportamento quando o contêiner entra em Fullscreen */
+        #modal-media-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        #modal-media-wrapper video, #modal-media-wrapper img {
+            width: 100%; height: 100%; object-fit: contain;
+            transition: transform 0.3s;
+        }
+
+        /* Ajustes de proporção ao rotacionar em tela cheia */
+        #modal-media-wrapper:fullscreen video.modal-rotated,
+        #modal-media-wrapper:fullscreen img.modal-rotated {
+            width: 100vh !important;
+            height: 100vw !important;
+        }
+
+        /* BOTÕES FLUTUANTES EXCLUSIVOS DO FULLSCREEN */
+        .fullscreen-btn {
+            display: none; /* Escondidos por padrão fora do Fullscreen */
+            position: absolute;
+            background: rgba(20, 20, 20, 0.85);
+            color: white;
+            border: 1px solid #444;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2147483647; /* Força ficar no topo absoluto da GPU */
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .fullscreen-btn:hover { background: #1f1f1f; transform: scale(1.05); }
+
+        .fs-back-btn { top: 25px; left: 25px; }
+        .fs-rotate-btn { top: 25px; right: 25px; }
+
+        /* Faz os botões aparecerem magicamente quando o wrapper estiver em Fullscreen */
+        #modal-media-wrapper:fullscreen .fullscreen-btn {
+            display: block;
+        }
+
+        /* Esconde o botão de fullscreen nativo do navegador para evitar bugs */
+        video::-webkit-media-controls-fullscreen-button { display: none !important; }
+        video::-internal-media-controls-fullscreen-button { display: none !important; }
+
+        .modal-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 850px;
+        }
+
+        .modal-btn {
+            flex: 1; padding: 12px; border: none; border-radius: 6px;
+            font-weight: bold; font-size: 14px; cursor: pointer; color: white;
+        }
+        .btn-modal-close { background-color: #ea4335; }
+        .btn-modal-rotate { background-color: #4285f4; }
+        .btn-modal-fs { background-color: #a142f4; }
+        .btn-modal-download { background-color: #34a853; }
+    </style>
+</head>
+<body>
+
+    <h2>Conversor Multi-Mídia (.bxa0 & .anBn)</h2>
+    <div id="status-msg">Clique abaixo para selecionar uma pasta ou arraste arquivos aqui</div>
+
+    <div id="drop-zone">
+        <p>📁 Clique aqui para selecionar uma pasta</p>
+        <span style="font-size: 13px; color: #aaa; margin-top: 5px;">Miniaturas em modo Lazy Loading com suporte total a Fullscreen</span>
+    </div>
+
+    <div id="playlist-container"></div>
+
+    <div id="player-modal">
+        <div id="modal-title" style="margin-bottom: 10px; font-size: 15px; color: #aaa; text-align: center; width:100%;"></div>
+        
+        <div id="modal-media-wrapper">
+            <button class="fullscreen-btn fs-back-btn" id="fs-btn-back">⬅ Voltar (Esc)</button>
+            <button class="fullscreen-btn fs-rotate-btn" id="fs-btn-rotate">🔄 Girar (R)</button>
+        </div>
+
+        <div class="modal-controls">
+            <button class="modal-btn btn-modal-close" id="m-close">❌ Fechar</button>
+            <button class="modal-btn btn-modal-rotate" id="m-rotate">🔄 Girar (R)</button>
+            <button class="modal-btn btn-modal-fs" id="m-fs">📺 Tela Cheia</button>
+            <button class="modal-btn btn-modal-download" id="m-download">💾 Baixar</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const playlistContainer = document.getElementById('playlist-container');
+        const statusMsg = document.getElementById('status-msg');
+        
+        const playerModal = document.getElementById('player-modal');
+        const modalMediaWrapper = document.getElementById('modal-media-wrapper');
+        const modalTitle = document.getElementById('modal-title');
+        
+        // Controles normais da Janela
+        const mClose = document.getElementById('m-close');
+        const mRotate = document.getElementById('m-rotate');
+        const mFs = document.getElementById('m-fs');
+        const mDownload = document.getElementById('m-download');
+
+        // Controles de dentro da Tela Cheia
+        const fsBtnBack = document.getElementById('fs-btn-back');
+        const fsBtnRotate = document.getElementById('fs-btn-rotate');
+
+        let activeBlobUrl = null;
+        let activeBlob = null;
+        let activeFilename = "";
+        let currentRotation = 0;
+
+        // Intersection Observer para Lazy Load das miniaturas
+        const lazyObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    observer.unobserve(card);
+                    processarThumbnailOculta(card.fileData, card.querySelector('.thumbnail-wrapper'), card.isVideo);
+                }
+            });
+        }, { rootMargin: "100px" });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            document.body.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('hover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+        dropZone.addEventListener('drop', handleDrop);
+
+        dropZone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file'; input.webkitdirectory = true; input.multiple = true;
+            input.onchange = (e) => processarLista(Array.from(e.target.files));
+            input.click();
+        });
+
+        async function handleDrop(e) {
+            dropZone.classList.remove('hover');
+            let arquivos = [];
+            statusMsg.innerText = "Mapeando diretórios...";
+            const items = e.dataTransfer.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i].webkitGetAsEntry();
+                    if (item) await percorrerDiretorio(item, arquivos);
+                }
+            } else { arquivos = Array.from(e.dataTransfer.files); }
+            processarLista(arquivos);
+        }
+
+        function percorrerDiretorio(item, lista) {
+            return new Promise((resolve) => {
+                if (item.isFile) {
+                    item.file(f => { lista.push(f); resolve(); });
+                } else if (item.isDirectory) {
+                    const reader = item.createReader();
+                    reader.readEntries(async entries => {
+                        for (let entry of entries) await percorrerDiretorio(entry, lista);
+                        resolve();
+                    });
+                } else resolve();
+            });
+        }
+
+        function processarLista(arquivos) {
+            playlistContainer.innerHTML = "";
+            const validos = arquivos.filter(f => {
+                const ext = f.name.toLowerCase();
+                return ext.endsWith('.bxa0') || ext.endsWith('.anbn');
+            });
+
+            if (validos.length === 0) {
+                statusMsg.style.color = "#ea4335";
+                statusMsg.innerText = "Nenhum arquivo .bxa0 ou .anBn encontrado.";
+                return;
+            }
+
+            validos.forEach(file => criarCardEsqueleto(file));
+            statusMsg.style.color = "#34a853";
+            statusMsg.innerText = `${validos.length} arquivos prontos. Carregando ícones dinâmicos...`;
+        }
+
+        function criarCardEsqueleto(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isVideo = ext === 'bxa0';
+            const nomeExibicao = file.name.replace(new RegExp(`\\.${ext}$`, 'i'), "") + (isVideo ? ".mp4" : ".jpg");
+
+            const card = document.createElement('div');
+            card.className = 'media-card';
+            card.fileData = file;
+            card.isVideo = isVideo;
+
+            const thumbWrapper = document.createElement('div');
+            thumbWrapper.className = 'thumbnail-wrapper';
+            thumbWrapper.innerHTML = `<span class="loading-dots">Carregando...</span>`;
+
+            const titulo = document.createElement('div');
+            titulo.className = 'media-title';
+            titulo.innerText = nomeExibicao;
+
+            const btnOpen = document.createElement('button');
+            btnOpen.className = 'btn-open';
+            btnOpen.innerText = "📺 Abrir";
+            btnOpen.onclick = () => abrirNoPlayer(file, isVideo, nomeExibicao);
+
+            card.appendChild(thumbWrapper);
+            card.appendChild(titulo);
+            card.appendChild(btnOpen);
+            playlistContainer.appendChild(card);
+
+            lazyObserver.observe(card);
+        }
+
+        function processarThumbnailOculta(file, wrapper, isVideo) {
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+            reader.onload = function(e) {
+                const buffer = e.target.result;
+                const srcBytes = new Uint8Array(buffer);
+                let blobFinal;
+
+                if (isVideo) {
+                    const CORTE_VIDEO = 32;
+                    blobFinal = srcBytes.length > CORTE_VIDEO 
+                        ? new Blob([srcBytes.subarray(CORTE_VIDEO)], { type: mimeType })
+                        : new Blob([srcBytes], { type: mimeType });
+                } else {
+                    let indexCorte = 24;
+                    for (let i = 0; i < Math.min(srcBytes.length, 100); i++) {
+                        if (srcBytes[i] === 0xFF && srcBytes[i+1] === 0xD8 && srcBytes[i+2] === 0xFF) {
+                            indexCorte = i; break;
+                        }
+                    }
+                    blobFinal = new Blob([srcBytes.subarray(indexCorte)], { type: mimeType });
+                }
+
+                const urlTemp = URL.createObjectURL(blobFinal);
+
+                if (isVideo) {
+                    const videoFantasma = document.createElement('video');
+                    videoFantasma.src = urlTemp;
+                    videoFantasma.muted = true;
+                    videoFantasma.playsInline = true;
+                    videoFantasma.preload = "auto";
+                    videoFantasma.onloadeddata = () => videoFantasma.currentTime = 1;
+                    videoFantasma.onseeked = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = videoFantasma.videoWidth || 320;
+                        canvas.height = videoFantasma.videoHeight || 180;
+                        canvas.getContext('2d').drawImage(videoFantasma, 0, 0, canvas.width, canvas.height);
+                        const img = document.createElement('img');
+                        img.src = canvas.toDataURL('image/jpeg', 0.6);
+                        wrapper.innerHTML = "";
+                        wrapper.appendChild(img);
+                        videoFantasma.src = "";
+                        URL.revokeObjectURL(urlTemp);
+                    };
+                } else {
+                    const img = document.createElement('img');
+                    img.src = urlTemp;
+                    img.onload = () => { wrapper.innerHTML = ""; wrapper.appendChild(img); };
+                }
+            };
+        }
+
+        function abrirNoPlayer(file, isVideo, nomeNovoArquivo) {
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+
+            reader.onload = function(e) {
+                const buffer = e.target.result;
+                const srcBytes = new Uint8Array(buffer);
+
+                if (isVideo) {
+                    const CORTE_VIDEO = 32;
+                    activeBlob = srcBytes.length > CORTE_VIDEO 
+                        ? new Blob([srcBytes.subarray(CORTE_VIDEO)], { type: mimeType })
+                        : new Blob([srcBytes], { type: mimeType });
+                } else {
+                    let indexCorte = 24;
+                    for (let i = 0; i < Math.min(srcBytes.length, 100); i++) {
+                        if (srcBytes[i] === 0xFF && srcBytes[i+1] === 0xD8 && srcBytes[i+2] === 0xFF) {
+                            indexCorte = i; break;
+                        }
+                    }
+                    activeBlob = new Blob([srcBytes.subarray(indexCorte)], { type: mimeType });
+                }
+
+                activeBlobUrl = URL.createObjectURL(activeBlob);
+                activeFilename = nomeNovoArquivo;
+                currentRotation = 0;
+
+                // Limpa mídias antigas sem deletar os botões flutuantes fixos
+                const antigasMidias = modalMediaWrapper.querySelectorAll('video, img');
+                antigasMidias.forEach(m => m.remove());
+
+                let elemento = isVideo ? document.createElement('video') : document.createElement('img');
+                if (isVideo) { elemento.controls = true; elemento.autoplay = true; }
+                elemento.id = "active-media-element";
+                elemento.src = activeBlobUrl;
+                
+                // Adiciona no início do container
+                modalMediaWrapper.insertBefore(elemento, modalMediaWrapper.firstChild);
+
+                modalTitle.innerText = activeFilename;
+                playerModal.style.display = "flex";
+            };
+        }
+
+        function rotacionarMedia() {
+            const el = document.getElementById('active-media-element');
+            if (!el) return;
+            currentRotation = (currentRotation + 90) % 360;
+            el.style.transform = `rotate(${currentRotation}deg)`;
+            el.classList.toggle('modal-rotated', currentRotation === 90 || currentRotation === 270);
+        }
+
+        function alternarFullscreen() {
+            if (!document.fullscreenElement) {
+                modalMediaWrapper.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function fecharModal() {
+            if (document.fullscreenElement) document.exitFullscreen();
+            playerModal.style.display = "none";
+            const antigasMidias = modalMediaWrapper.querySelectorAll('video, img');
+            antigasMidias.forEach(m => m.remove());
+            if (activeBlobUrl) {
+                URL.revokeObjectURL(activeBlobUrl);
+                activeBlobUrl = null; activeBlob = null;
+            }
+        }
+
+        // Atribuição das funções aos botões normais e de tela cheia
+        mRotate.onclick = rotacionarMedia;
+        fsBtnRotate.onclick = rotacionarMedia; // Rotação em Tela Cheia
+        
+        mFs.onclick = alternarFullscreen;
+        fsBtnBack.onclick = alternarFullscreen; // Sair da Tela Cheia pelo botão
+
+        mClose.onclick = fecharModal;
+
+        // Duplo clique na imagem ou vídeo entra/sai de Tela Cheia
+        modalMediaWrapper.addEventListener('dblclick', (e) => {
+            if (e.target.id === "active-media-element") {
+                alternarFullscreen();
+            }
+        });
+
+        mDownload.onclick = () => {
+            if (!activeBlob) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(activeBlob);
+            a.download = activeFilename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        };
+
+        // Atalhos do teclado (Esc e R funcionam em qualquer modo)
+        document.addEventListener('keydown', e => {
+            if (playerModal.style.display === "flex") {
+                if (e.key === "Escape" && !document.fullscreenElement) fecharModal();
+                if (e.key === "r" || e.key === "R") rotacionarMedia();
+            }
+        });
+    </script>
+</body>
+</html>
