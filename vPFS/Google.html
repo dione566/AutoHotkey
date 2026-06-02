@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google</title>
+    <style>
+        /* ESTILOS DO DISFARCE (GOOGLE) */
+        body { 
+            margin: 0; 
+            font-family: arial, sans-serif; 
+            background: #fff; 
+            box-sizing: border-box;
+        }
+        
+        #google-fake-screen {
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            height: 100vh;
+            background: #fff;
+        }
+        .logo-google { font-size: 80px; font-weight: bold; margin-bottom: 20px; user-select: none; }
+        .logo-google span:nth-child(1) { color: #4285f4; }
+        .logo-google span:nth-child(2) { color: #ea4335; }
+        .logo-google span:nth-child(3) { color: #fbbc05; }
+        .logo-google span:nth-child(4) { color: #4285f4; }
+        .logo-google span:nth-child(5) { color: #34a853; }
+        .logo-google span:nth-child(6) { color: #ea4335; }
+
+        .search-box {
+            width: 90%; max-width: 580px; height: 44px; border: 1px solid #dfe1e5;
+            border-radius: 24px; display: flex; align-items: center; padding: 0 20px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+        }
+        #search-input { border: none; outline: none; width: 100%; font-size: 16px; background: transparent; }
+
+        /* ESTILOS DA GALERIA OCULTA (ATIVE APENAS COM 382610) */
+        #main-content { 
+            display: none; 
+            background: #000000; 
+            min-height: 100vh; 
+            padding: 12px; 
+            color: #ffffff;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+
+        h2 { margin: 10px 0 5px 0; font-weight: 600; font-size: 20px; letter-spacing: -0.5px; text-align: center;}
+        
+        #status-msg { color: #4285f4; margin-bottom: 15px; font-size: 13px; font-weight: 500; text-align: center; }
+
+        #drop-zone {
+            width: 100%; max-width: 640px; height: 90px; border: 2px dashed #333;
+            border-radius: 14px; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; background-color: #121212; cursor: pointer;
+            transition: all 0.2s ease; text-align: center; padding: 10px; box-sizing: border-box; margin-bottom: 25px;
+        }
+        #drop-zone.hover { background-color: #1a1a1a; border-color: #4285f4; }
+        #drop-zone p { margin: 0; font-size: 15px; color: #e0e0e0; font-weight: 500; }
+
+        #playlist-container {
+            width: 100%; max-width: 1000px; display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(115px, 1fr)); gap: 12px 6px; padding: 0;
+        }
+
+        .media-card { display: flex; flex-direction: column; width: 100%; cursor: pointer; overflow: hidden; }
+        .media-card:active { opacity: 0.7; }
+
+        .thumbnail-wrapper {
+            width: 100%; aspect-ratio: 1 / 1; background-color: #111; border-radius: 8px;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        .thumbnail-wrapper img, .thumbnail-wrapper video { width: 100%; height: 100%; object-fit: cover; }
+
+        .loading-dots { font-size: 10px; color: #555; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+        .media-title {
+            margin-top: 6px; font-size: 11px; color: #e0e0e0; text-align: center; padding: 0 2px;
+            box-sizing: border-box; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400;
+        }
+
+        /* MODAL DO PLAYER SUPERIOR */
+        #player-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: rgba(0,0,0,0.98); z-index: 99999; flex-direction: column;
+            align-items: center; justify-content: center; padding: 10px; box-sizing: border-box;
+        }
+        #modal-media-wrapper {
+            width: 100%; max-width: 850px; aspect-ratio: 16/9; background: #000;
+            border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;
+        }
+        #modal-media-wrapper:fullscreen { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; }
+        #modal-media-wrapper video, #modal-media-wrapper img { width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s; }
+        #modal-media-wrapper:fullscreen video.modal-rotated, #modal-media-wrapper:fullscreen img.modal-rotated { width: 100vh !important; height: 100vw !important; }
+
+        .fullscreen-btn {
+            display: none; position: absolute; background: rgba(20, 20, 20, 0.85); color: white; border: 1px solid #444;
+            padding: 12px 20px; border-radius: 30px; font-size: 14px; font-weight: bold; cursor: pointer; z-index: 2147483647;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: background 0.2s, transform 0.1s; 
+        }
+        .fullscreen-btn:hover { background: #1f1f1f; transform: scale(1.05); }
+        .fs-back-btn { top: 25px; left: 25px; }
+        .fs-rotate-btn { top: 25px; right: 25px; }
+        #modal-media-wrapper:fullscreen .fullscreen-btn { display: block; }
+
+        video::-webkit-media-controls-fullscreen-button, video::-internal-media-controls-fullscreen-button { display: none !important; }
+
+        .modal-controls { margin-top: 15px; display: flex; gap: 10px; width: 100%; max-width: 850px; }
+        .modal-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; font-size: 13px; cursor: pointer; color: white; }
+        .btn-modal-close { background-color: #ea4335; }
+        .btn-modal-rotate { background-color: #4285f4; }
+        .btn-modal-fs { background-color: #a142f4; }
+        .btn-modal-download { background-color: #34a853; }
+    </style>
+</head>
+<body>
+
+    <div id="google-fake-screen">
+        <div class="logo-google"><span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span></div>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Pesquisar no Google ou digitar URL" autocomplete="off">
+        </div>
+    </div>
+
+    <div id="main-content">
+        <h2>Galeria Privada de Arquivos</h2>
+        <div id="status-msg">Selecione uma pasta ou arraste arquivos aqui</div>
+
+        <div id="drop-zone">
+            <p>📁 Selecionar pasta de mídias</p>
+        </div>
+
+        <div id="playlist-container"></div>
+    </div>
+
+    <div id="player-modal">
+        <div id="modal-title" style="margin-bottom: 10px; font-size: 14px; color: #aaa; text-align: center; width:100%;"></div>
+        <div id="modal-media-wrapper">
+            <button class="fullscreen-btn fs-back-btn" id="fs-btn-back">⬅ Voltar (Esc)</button>
+            <button class="fullscreen-btn fs-rotate-btn" id="fs-btn-rotate">🔄 Girar (R)</button>
+        </div>
+        <div class="modal-controls">
+            <button class="modal-btn btn-modal-close" id="m-close">❌ Fechar</button>
+            <button class="modal-btn btn-modal-rotate" id="m-rotate">🔄 Girar (R)</button>
+            <button class="modal-btn btn-modal-fs" id="m-fs">📺 Tela Cheia</button>
+            <button class="modal-btn btn-modal-download" id="m-download">💾 Baixar</button>
+        </div>
+    </div>
+
+    <script>
+        // Elementos de Controle do Disfarce e Telas
+        const searchInput = document.getElementById('search-input');
+        const googleScreen = document.getElementById('google-fake-screen');
+        const mainContent = document.getElementById('main-content');
+
+        // Elementos da Galeria
+        const dropZone = document.getElementById('drop-zone');
+        const playlistContainer = document.getElementById('playlist-container');
+        const statusMsg = document.getElementById('status-msg');
+        
+        // Elementos do Modal do Player
+        const playerModal = document.getElementById('player-modal');
+        const modalMediaWrapper = document.getElementById('modal-media-wrapper');
+        const modalTitle = document.getElementById('modal-title');
+        const mClose = document.getElementById('m-close');
+        const mRotate = document.getElementById('m-rotate');
+        const mFs = document.getElementById('m-fs');
+        const mDownload = document.getElementById('m-download');
+        const fsBtnBack = document.getElementById('fs-btn-back');
+        const fsBtnRotate = document.getElementById('fs-btn-rotate');
+
+        let activeBlobUrl = null;
+        let activeBlob = null;
+        let activeFilename = "";
+        let currentRotation = 0;
+        let criadosThumbsUrls = []; // Monitoramento de memória RAM para exclusão segura
+
+        // 1. VALIDAÇÃO DA SENHA SECRETA (No campo do Google)
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (searchInput.value === '382610') {
+                    searchInput.value = '';
+                    googleScreen.style.display = 'none';
+                    mainContent.style.display = 'flex'; // Exibe a galeria oculta
+                } else {
+                    // Se digitar outra coisa, age como um Google real e pesquisa na internet
+                    window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(searchInput.value);
+                }
+            }
+        });
+
+        // 2. LÓGICA DE CARREGAMENTO DA PASTA E ARQUIVOS (.bxa0 & .anBn)
+        const lazyObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const card = entry.target;
+                    observer.unobserve(card);
+                    processarThumbnailOculta(card.fileData, card.querySelector('.thumbnail-wrapper'), card.isVideo);
+                }
+            });
+        }, { rootMargin: "200px" });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(ev => {
+            document.body.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
+        });
+        dropZone.addEventListener('dragenter', () => dropZone.classList.add('hover'));
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+        dropZone.addEventListener('drop', handleDrop);
+
+        dropZone.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file'; input.webkitdirectory = true; input.multiple = true;
+            input.onchange = (e) => processarLista(Array.from(e.target.files));
+            input.click();
+        });
+
+        async function handleDrop(e) {
+            dropZone.classList.remove('hover');
+            let arquivos = [];
+            statusMsg.innerText = "Mapeando mídias...";
+            const items = e.dataTransfer.items;
+            if (items) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i].webkitGetAsEntry();
+                    if (item) await percorrerDiretorio(item, arquivos);
+                }
+            } else { arquivos = Array.from(e.dataTransfer.files); }
+            processarLista(arquivos);
+        }
+
+        function percorrerDiretorio(item, lista) {
+            return new Promise((resolve) => {
+                if (item.isFile) {
+                    item.file(f => { lista.push(f); resolve(); });
+                } else if (item.isDirectory) {
+                    const reader = item.createReader();
+                    reader.readEntries(async entries => {
+                        for (let entry of entries) await percorrerDiretorio(entry, lista);
+                        resolve();
+                    });
+                } else resolve();
+            });
+        }
+
+        function processarLista(arquivos) {
+            limparSessaoCompleta();
+            const validos = arquivos.filter(f => {
+                const ext = f.name.toLowerCase();
+                return ext.endsWith('.bxa0') || ext.endsWith('.anbn');
+            });
+
+            if (validos.length === 0) {
+                statusMsg.style.color = "#ea4335";
+                statusMsg.innerText = "Nenhum arquivo compatível encontrado.";
+                return;
+            }
+
+            validos.forEach(file => criarCardEsqueleto(file));
+            statusMsg.style.color = "#34a853";
+            statusMsg.innerText = `${validos.length} mídias carregadas na galeria.`;
+        }
+
+        function criarCardEsqueleto(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const isVideo = ext === 'bxa0';
+            const nomeSemExtensao = file.name.replace(new RegExp(`\\.${ext}$`, 'i'), "");
+            
+            let nomeExibicao;
+            try {
+                const binario = atob(nomeSemExtensao);
+                nomeExibicao = decodeURIComponent(Array.prototype.map.call(binario, function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            } catch (e) { nomeExibicao = nomeSemExtensao; }
+
+            const extensaoFinal = isVideo ? ".mp4" : ".jpg";
+            if (!nomeExibicao.toLowerCase().endsWith(extensaoFinal)) { nomeExibicao += extensaoFinal; }
+
+            const card = document.createElement('div');
+            card.className = 'media-card';
+            card.fileData = file; card.isVideo = isVideo;
+            card.onclick = () => abrirNoPlayer(file, isVideo, nomeExibicao);
+
+            const thumbWrapper = document.createElement('div');
+            thumbWrapper.className = 'thumbnail-wrapper';
+            thumbWrapper.innerHTML = `<span class="loading-dots">...</span>`;
+
+            const titulo = document.createElement('div');
+            titulo.className = 'media-title'; titulo.innerText = nomeExibicao;
+
+            card.appendChild(thumbWrapper); card.appendChild(titulo);
+            playlistContainer.appendChild(card);
+            lazyObserver.observe(card);
+        }
+
+        function processarThumbnailOculta(file, wrapper, isVideo) {
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+            let blobFinal = isVideo ? (file.size > 32 ? file.slice(32, file.size, mimeType) : file) : file.slice(24, file.size, mimeType);
+
+            const urlTemp = URL.createObjectURL(blobFinal);
+            criadosThumbsUrls.push(urlTemp);
+
+            if (isVideo) {
+                const videoThumb = document.createElement('video');
+                videoThumb.src = urlTemp; videoThumb.muted = true; videoThumb.playsInline = true; videoThumb.preload = "metadata";
+                wrapper.innerHTML = ""; wrapper.appendChild(videoThumb);
+            } else {
+                const img = document.createElement('img');
+                img.src = urlTemp;
+                img.onload = () => { wrapper.innerHTML = ""; wrapper.appendChild(img); };
+            }
+        }
+
+        // 3. ABRE PLAYER DE MÍDIA COMPLETA
+        function abrirNoPlayer(file, isVideo, nomeNovoArquivo) {
+            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
+            const reader = new FileReader();
+            reader.readAsArrayBuffer(file);
+
+            reader.onload = function(e) {
+                const buffer = e.target.result;
+                const srcBytes = new Uint8Array(buffer);
+
+                if (isVideo) {
+                    activeBlob = srcBytes.length > 32 ? new Blob([srcBytes.subarray(32)], { type: mimeType }) : new Blob([srcBytes], { type: mimeType });
+                } else {
+                    let indexCorte = 24;
+                    for (let i = 0; i < Math.min(srcBytes.length, 100); i++) {
+                        if (srcBytes[i] === 0xFF && srcBytes[i+1] === 0xD8 && srcBytes[i+2] === 0xFF) { indexCorte = i; break; }
+                    }
+                    activeBlob = new Blob([srcBytes.subarray(indexCorte)], { type: mimeType });
+                }
+
+                activeBlobUrl = URL.createObjectURL(activeBlob);
+                activeFilename = nomeNovoArquivo;
+                currentRotation = 0;
+
+                modalMediaWrapper.querySelectorAll('video, img').forEach(m => m.remove());
+
+                let elemento = isVideo ? document.createElement('video') : document.createElement('img');
+                if (isVideo) { elemento.controls = true; elemento.autoplay = true; }
+                elemento.id = "active-media-element"; elemento.src = activeBlobUrl;
+                
+                modalMediaWrapper.insertBefore(elemento, modalMediaWrapper.firstChild);
+                modalTitle.innerText = activeFilename;
+                playerModal.style.display = "flex";
+            };
+        }
+
+        function rotacionarMedia() {
+            const el = document.getElementById('active-media-element'); if (!el) return;
+            currentRotation = (currentRotation + 90) % 360;
+            el.style.transform = `rotate(${currentRotation}deg)`;
+            el.classList.toggle('modal-rotated', currentRotation === 90 || currentRotation === 270);
+        }
+
+        function alternarFullscreen() {
+            if (!document.fullscreenElement) { modalMediaWrapper.requestFullscreen().catch(err => console.log(err)); } 
+            else { document.exitFullscreen(); }
+        }
+
+        function fecharModal() {
+            if (document.fullscreenElement) document.exitFullscreen();
+            
+            // Força a parada imediata e remoção de qualquer elemento de áudio/vídeo tocando
+            modalMediaWrapper.querySelectorAll('video, img').forEach(m => {
+                if(m.tagName === 'VIDEO') {
+                    m.pause();
+                    m.removeAttribute('src'); // Remove a origem do buffer
+                    m.load();                 // Reseta o player interno do navegador
+                }
+                m.remove();
+            });
+
+            playerModal.style.display = "none";
+            if (activeBlobUrl) { URL.revokeObjectURL(activeBlobUrl); activeBlobUrl = null; activeBlob = null; }
+        }
+
+        // ==========================================
+        // SISTEMA DE LIMPEZA E LOCK AUTOMÁTICO (HOME)
+        // ==========================================
+        function limparSessaoCompleta() {
+            fecharModal();
+            playlistContainer.innerHTML = "";
+            
+            // Destrói os blobs carregados e limpa a memória RAM
+            criadosThumbsUrls.forEach(url => { try { URL.revokeObjectURL(url); } catch (e) {} });
+            criadosThumbsUrls = [];
+            
+            statusMsg.style.color = "#4285f4";
+            statusMsg.innerText = "Selecione uma pasta ou arraste arquivos aqui";
+        }
+
+        // Executado imediatamente quando o usuário minimiza, aperta Home ou muda de aba
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                limparSessaoCompleta();
+                
+                // Tranca novamente mudando para a tela fake do Google
+                mainContent.style.display = 'none';
+                googleScreen.style.display = 'flex';
+                searchInput.value = '';
+            }
+        });
+
+        // Controles de Click dos botões
+        mRotate.onclick = rotacionarMedia; fsBtnRotate.onclick = rotacionarMedia; 
+        mFs.onclick = alternarFullscreen; fsBtnBack.onclick = alternarFullscreen; 
+        mClose.onclick = fecharModal;
+
+        modalMediaWrapper.addEventListener('dblclick', (e) => {
+            if (e.target.id === "active-media-element") alternarFullscreen();
+        });
+
+        mDownload.onclick = () => {
+            if (!activeBlob) return;
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(activeBlob); a.download = activeFilename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        };
+
+        document.addEventListener('keydown', e => {
+            if (playerModal.style.display === "flex") {
+                if (e.key === "Escape" && !document.fullscreenElement) fecharModal();
+                if (e.key === "r" || e.key === "R") rotacionarMedia();
+            }
+        });
+    </script>
+</body>
+</html>
